@@ -56,7 +56,7 @@ const mainloop = function() {
                 if(hitCheck(player_x, player_y, img_player,
                             enemies_x[i], enemies_y[i], img_enemy)){
                     // 当たっているのでお互いのHPを1削る
-                    player_hp -= 5;
+                    player_hp -= 10;
                     enemies_hp[i] -= 0;
                     // プレイヤーを無敵状態にする
                     player_star_interval = STAR_INTERVAL;
@@ -117,7 +117,8 @@ window.onload = function() {
     // 敵キャラの初期位置を指定
     for(let i=0; i<ENEMIES; i++) {
         enemies_x[i] = Math.random() * (canvas.width - img_enemy.width);
-        enemies_y[i] = Math.random() * (canvas.height - img_enemy.height);
+        // enemies_y[i] = Math.random() * (canvas.height - img_enemy.height);
+        enemies_y[i] = 0;
         enemies_hp[i] = 2;
     }
 
