@@ -14,6 +14,7 @@ for(let i=0; i<KEYS.length; i++) {
 
 // 画像を保持する変数を定義
 const img_player = document.getElementById('player');
+const img_player_bullet = document.getElementById('tama');
 const img_enemy = document.getElementById('enemy');
 
 // プレイヤー座標
@@ -29,8 +30,22 @@ let player_hp;
 const STAR_INTERVAL = 20;
 let player_star_interval = 0;
 
+
+// 発射インターバルの値を定義（この値が大きいほど連射が遅くなる）
+const FIRE_INTERVAL = 10;
+// 弾の数を定義（同時に描画される弾の最大数より大きい必要あり）
+const BULLETS = 5;
+// プレイヤーの発射インターバル
+let player_fire_interval = 0;
+
+
+// 弾の設定
+let player_bullets_x = new Array(BULLETS);
+let player_bullets_y = new Array(BULLETS);
+let player_bullets_hp = new Array(BULLETS);
+
 // 敵の数を定義
-let ENEMIES = 1;
+let ENEMIES = 3;
 // 月（敵）座標
 let enemies_x = new Array(ENEMIES);
 let enemies_y = new Array(ENEMIES);
@@ -45,6 +60,8 @@ const mainloop = function() {
 
     // プレイヤーの移動処理
     movePlayer();
+    // プレイヤーの弾の移動処理
+    movePlayerBullets();
     // 敵キャラの移動処理
     moveEnemies();
 
@@ -70,6 +87,32 @@ const mainloop = function() {
         player_star_interval--;
     }
 
+    // プレイヤー弾と敵キャラの当たり判定（プレイヤーが生きている場合）
+    if(player_hp > 0) {
+        for(let i=0; i<ENEMIES; i++) {
+            // 敵が死んでいる場合はスルーする
+            if(enemies_hp[i] <= 0) {
+                continue;
+            }
+            for(let j=0; j<BULLETS; j++) {
+                // 弾が死んでいる場合はスルーする
+                if(player_bullets_hp[j] <= 0) {
+                    continue;
+                }
+                if(hitCheck(player_bullets_x[j],
+                            player_bullets_y[j],
+                            img_player_bullet,
+                            enemies_x[i],
+                            enemies_y[i],
+                            img_enemy)){
+                    // 当たっているのでお互いのHPを1削る
+                    player_bullets_hp[j] -= 1;
+                    enemies_hp[i] -=1;
+                }
+            }
+        }
+    }
+
     // 描画処理
     redraw();
 
@@ -92,13 +135,13 @@ const mainloop = function() {
 window.onkeydown = function(e) {
     // キーを押された状態に更新
     KEYS[e.keyCode] = true;
-    console.log(e)
+    // console.log(e)
 }
 // キーが離された時に呼び出される処理を指定
 window.onkeyup = function(e) {
     // キーを離された状態に更新
     KEYS[e.keyCode] = false;
-    console.log(e)
+    // console.log(e)
 }
 
 // ページロード時に呼び出される処理を指定
@@ -113,6 +156,13 @@ window.onload = function() {
     player_x = (canvas.width - 128) / 2;
     player_y = (canvas.height - 128) - 10;
     player_hp = 10;
+
+    // 弾の初期位置およびHPを指定
+    for(let i=0; i<BULLETS; i++) {
+        player_bullets_x[i] = 0;
+        player_bullets_y[i] = 0;
+        player_bullets_hp[i] = 0;
+    }
 
     // 敵キャラの初期位置を指定
     for(let i=0; i<ENEMIES; i++) {
@@ -144,13 +194,81 @@ const redraw = function() {
         ctx.drawImage(img_player, 128 * 3, 128, 128, 128, player_x, player_y, 128, 128)
     }
 
+    // 弾の画像を (bullets_x[i], bullets_y[i]) の位置に表示
+    for(let i=0; i<BULLETS; i++) {
+        // 生きている場合だけ描画
+        if(player_bullets_hp[i] > 0) {
+            ctx.drawImage(img_player_bullet,
+                        player_bullets_x[i],
+                        player_bullets_y[i]);
+        }
+    }
+
     // 敵キャラの画像を (enemies_x[i], enemies_y[i]) の位置に表示
+    let killed = 3;
     for(let i=0; i<ENEMIES; i++) {
         // 生きている場合だけ描画
         if (enemies_hp[i] > 0) {
+            killed--;
             ctx.drawImage(img_enemy, enemies_x[i], enemies_y[i]);
         }
     }
+
+    // コンテキストの状態を保存（fillStyleを変えたりするので）
+    ctx.save();
+    // HPの最大値（10）x 5 の短形を描画（白）
+    // ctx.fillStyle = '#fff';
+    // ctx.fillRect(10, canvas.height-10, 10 * 5, 5);
+    // // 残りHP x 5 の短形を描画（赤）
+    // ctx.fillStyle = '#f00';
+    // ctx.fillRect(10, canvas.height - 10, player_hp * 5, 5);
+    // 「倒した敵の数/全敵の数」という文字列を作成
+    var text = "Killed: " + killed + "/" + ENEMIES;
+    // 文字列の（描画）横幅を計算する
+    var width = ctx.measureText(text).width;
+    // 文字列を描画（白）
+    ctx.fillStyle = '#fff';
+    ctx.fillText(text,
+                canvas.width - 10 - width,
+                canvas.height - 10);
+
+    // プレイヤーが死んでいた場合ゲームオーバー画面を表示する
+    if(player_hp <= 0){
+        // 全体を半透明の黒い四角で覆う（オーバーレイ）
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1.0;
+
+        // 真ん中に大きな文字でゲームオーバー（赤）と表示する
+        ctx.font = '20px sans-serif';
+        ctx.textBaseline = 'middle';    // 上下位置のベースラインを中心に
+        ctx.fillStyle = '#f00';
+        text = "Game Over";
+        width = ctx.measureText(text).width;
+        ctx.fillText(text,
+                    (canvas.width - width) / 2,
+                    canvas.height / 2);
+    } else if (killed == ENEMIES){
+        // 全体を半透明の黒い四角で覆う（オーバーレイ）
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1.0;
+
+        // 真ん中に大きな文字でゲームクリア（白）と表示する
+        ctx.font = '20px sans-serif';
+        ctx.textBaseline = 'middle';    // 上下位置のベースラインを中心に
+        ctx.fillStyle = '#fff';
+        text = "Game Clear";
+        width = ctx.measureText(text).width;
+        ctx.fillText(text,
+                    (canvas.width - width) / 2,
+                    canvas.height / 2);
+    }
+
+    // コンテキストの状態を復元
+    ctx.restore();
 
 
 };
@@ -168,8 +286,8 @@ const movePlayer = function () {
     const RIGHT = 39;
     const LEFT  = 37;
     const SPACE = 32;
-    console.log(img_player.width)
-    console.log(player_x)
+    // console.log(img_player.width)
+    // console.log(player_x)
 
     if(KEYS[RIGHT]) {
         // プレイヤーのx座標を少し増やす
@@ -186,12 +304,61 @@ const movePlayer = function () {
         player_x = canvas.width - 128;
     }
 
+    // スペースキーが押され、なおかつ発射インターバルが0の時だけ発射する
+    if(KEYS[SPACE] && player_fire_interval == 0) {
+        // 未使用の弾があれば発射する
+        for(let i=0; i<BULLETS; i++) {
+            if(player_bullets_hp[i] == 0) {
+                // 弾の初期位置はプレイヤーと同じ位置にする
+                player_bullets_x[i] = player_x + 60;
+                player_bullets_y[i] = player_y;
+                // 弾のHPを1にする。これにより次のループから描画や移動処理
+                // が行われるようになる
+                player_bullets_hp[i] = 1;
+                // 弾を打ったので発射インターバルの値を上げる
+                player_fire_interval = FIRE_INTERVAL;
+                // 弾は打ったのでループを抜ける
+                // ループ処理を途中でやめる場合は `break` を使う
+                break;
+            }
+        }
+    }
+
+    // 発射インターバルの値が0より大きい場合は値を減らす。
+    if(player_fire_interval > 0) {
+        player_fire_interval--;
+    }
+
+};
+
+// プレイヤーの弾の移動処理を定義
+const movePlayerBullets = function() {
+    // 上下左右の移動速度を定義
+    const SPEED = -10;
+
+    // 各弾ごとに処理を行う
+    for(let i=0; i<BULLETS; i++) {
+        // ヒットポイントを確認し、生きている場合のみ処理をする
+        if(player_bullets_hp[i] <= 0) {
+            // ループの残りのステップを無視して次のループに行く場合
+            // は `continue` を指定する
+            continue;
+        }
+
+        // 弾のy座標を少し増やす（減らす）
+        player_bullets_y[i] += SPEED;
+
+        // 弾が上画面にはみ出た場合はHPを0にして未使用状態に戻す
+        if (player_bullets_y[i] <= 0) {
+            player_bullets_hp[i] = 0;
+        }
+    }
 };
 
 // 敵キャラの移動処理を定義
 const moveEnemies = function() {
     // 上下左右の移動速度を定義
-    const SPEED = 8;
+    const SPEED = 6;
 
     // 各敵ごとに処理を行う
     for (let i = 0; i < ENEMIES; i++) {
