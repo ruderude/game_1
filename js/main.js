@@ -15,6 +15,7 @@ for(let i=0; i<KEYS.length; i++) {
 // 画像を保持する変数を定義
 const img_player = document.getElementById('player');
 const img_player_bullet = document.getElementById('tama');
+const img_drug = document.getElementById('drug');
 const img_enemy = document.getElementById('enemy');
 
 // プレイヤー座標
@@ -37,21 +38,69 @@ const FIRE_INTERVAL = 10;
 const BULLETS = 5;
 // プレイヤーの発射インターバル
 let player_fire_interval = 0;
-
-
 // 弾の設定
 let player_bullets_x = new Array(BULLETS);
 let player_bullets_y = new Array(BULLETS);
 let player_bullets_hp = new Array(BULLETS);
 
+// 回復アイテムの設定
+const RECOVERY = 1;
+let recovery_x = new Array(RECOVERY);
+let recovery_y = new Array(RECOVERY);
+let recovery_hp = new Array(RECOVERY);
+
 // 敵の数を定義
-let ENEMIES = 3;
+const ENEMIES = 3;
 // 月（敵）座標
 let enemies_x = new Array(ENEMIES);
 let enemies_y = new Array(ENEMIES);
+let enemies_speed = new Array(ENEMIES);
 // 敵のヒットポイント（配列）を保持する変数を定義し
 // ENEMIES分だけ要素数を持つ配列を代入
 let enemies_hp = new Array(ENEMIES);
+
+// タイトルループを定義
+const titleloop = function() {
+    // 処理開始時間を保存
+    const startTime = new Date();
+
+    // キャンバスをクリアする
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Hit SPACE to Start と表示
+    ctx.save();
+    ctx.font = '20px sans-serif';
+    ctx.textBaseline = 'middle';    // 上下位置のベースラインを中心に
+    ctx.fillStyle = '#fff';
+    const text = "ふくろうの冒険\nスペースキーで開始";
+    const width = ctx.measureText(text).width;
+    fillTextLine(ctx, text, (canvas.width - width / 2) / 2, canvas.height / 2);
+    // ctx.fillText(text,
+    //             (canvas.width - width) / 2,
+    //             canvas.height / 2);
+    ctx.restore();
+
+    // スペースが押されていた場合は mainloop を呼び出して、titleloopを終了
+    const SPACE = 32;
+    if(KEYS[SPACE]) {
+        // メインループを呼び出す
+        mainloop();
+        // 継続処理をせずに関数を終了（titleloopを抜ける）
+        return;
+    }
+
+    // 処理経過時間および次のループまでの間隔を計算
+    const deltaTime = (new Date()) - startTime;
+    const interval = MSPF - deltaTime;
+    if(interval > 0) {
+        // 処理が早すぎるので次のループまで少し待つ
+        setTimeout(titleloop, interval);
+    } else {
+        // 処理が遅すぎるので即次のループを実行する
+        // Note: titleloop()を直接呼び出すとフリーズします。
+        setTimeout(titleloop, 0);
+    }
+};
 
 // メインループを定義
 const mainloop = function() {
@@ -62,6 +111,8 @@ const mainloop = function() {
     movePlayer();
     // プレイヤーの弾の移動処理
     movePlayerBullets();
+    // 回復アイテム
+    movePlayerRecovery();
     // 敵キャラの移動処理
     moveEnemies();
 
@@ -73,7 +124,7 @@ const mainloop = function() {
                 if(hitCheck(player_x, player_y, img_player,
                             enemies_x[i], enemies_y[i], img_enemy)){
                     // 当たっているのでお互いのHPを1削る
-                    player_hp -= 10;
+                    player_hp -= 2;
                     enemies_hp[i] -= 0;
                     // プレイヤーを無敵状態にする
                     player_star_interval = STAR_INTERVAL;
@@ -108,6 +159,21 @@ const mainloop = function() {
                     // 当たっているのでお互いのHPを1削る
                     player_bullets_hp[j] -= 1;
                     enemies_hp[i] -=1;
+                }
+            }
+        }
+    }
+
+    // プレイヤーと回復アイテムの当たり判定
+    if(player_hp > 0) {
+        for(let i=0; i<RECOVERY; i++) {
+            // 敵が生きている場合のみ判定する
+            if(recovery_hp[i] > 0) {
+                if(hitCheck(player_x, player_y, img_player,
+                            recovery_x[i], recovery_y[i], img_drug)){
+                    // 当たっているのでお互いのHPを1削る
+                    player_hp += 2;
+                    recovery_hp[i] -= 2;
                 }
             }
         }
@@ -164,16 +230,26 @@ window.onload = function() {
         player_bullets_hp[i] = 0;
     }
 
+    // 回復アイテムの初期位置およびHPを指定
+    for(let i=0; i<RECOVERY; i++) {
+        recovery_x[i] = Math.random() * (canvas.width - img_drug.width);
+        recovery_y[i] = 0;
+        recovery_hp[i] = 2;
+    }
+
     // 敵キャラの初期位置を指定
+    // 速度
+    const MAX_ENEMIE_SPEED = 10;
+    const MIN_ENEMIE_SPEED = 2;
     for(let i=0; i<ENEMIES; i++) {
         enemies_x[i] = Math.random() * (canvas.width - img_enemy.width);
-        // enemies_y[i] = Math.random() * (canvas.height - img_enemy.height);
         enemies_y[i] = 0;
+        enemies_speed[i] = Math.floor(Math.random() * (MAX_ENEMIE_SPEED - MIN_ENEMIE_SPEED)) + MIN_ENEMIE_SPEED
         enemies_hp[i] = 2;
     }
 
-    // メインループを開始する
-    mainloop();
+    // ループを開始する
+    titleloop();
 
 };
 
@@ -183,6 +259,12 @@ const redraw = function() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // 生きている場合だけ新しい位置にプレイヤーを描画
+    if(player_star_interval % 2 != 0) {
+        // 半透明に描画する
+        ctx.globalAlpha = 0.5;
+    } else {
+        ctx.globalAlpha = 1;
+    }
     // プレイヤー歩くアニメ
     if (player_hp > 0 && (currentTime % 30) > 15) {
         ctx.drawImage(img_player, 0, 0, 128, 128, player_x, player_y, 128, 128)
@@ -194,6 +276,8 @@ const redraw = function() {
         ctx.drawImage(img_player, 128 * 3, 128, 128, 128, player_x, player_y, 128, 128)
     }
 
+    ctx.globalAlpha = 1;
+
     // 弾の画像を (bullets_x[i], bullets_y[i]) の位置に表示
     for(let i=0; i<BULLETS; i++) {
         // 生きている場合だけ描画
@@ -201,6 +285,16 @@ const redraw = function() {
             ctx.drawImage(img_player_bullet,
                         player_bullets_x[i],
                         player_bullets_y[i]);
+        }
+    }
+
+    // 回復アイテムを (recovery_x[i], recovery_y[i]) の位置に表示
+    for(let i=0; i<RECOVERY; i++) {
+        // 生きている場合だけ描画
+        if(recovery_hp[i] > 0) {
+            ctx.drawImage(img_drug,
+                        recovery_x[i],
+                        recovery_y[i]);
         }
     }
 
@@ -217,11 +311,11 @@ const redraw = function() {
     // コンテキストの状態を保存（fillStyleを変えたりするので）
     ctx.save();
     // HPの最大値（10）x 5 の短形を描画（白）
-    // ctx.fillStyle = '#fff';
-    // ctx.fillRect(10, canvas.height-10, 10 * 5, 5);
-    // // 残りHP x 5 の短形を描画（赤）
-    // ctx.fillStyle = '#f00';
-    // ctx.fillRect(10, canvas.height - 10, player_hp * 5, 5);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(10, canvas.height-10, 10 * 5, 5);
+    // 残りHP x 5 の短形を描画（赤）
+    ctx.fillStyle = '#f00';
+    ctx.fillRect(10, canvas.height - 10, player_hp * 5, 5);
     // 「倒した敵の数/全敵の数」という文字列を作成
     var text = "Killed: " + killed + "/" + ENEMIES;
     // 文字列の（描画）横幅を計算する
@@ -355,15 +449,29 @@ const movePlayerBullets = function() {
     }
 };
 
-// 敵キャラの移動処理を定義
-const moveEnemies = function() {
+// プレイヤーの回復アイテムを定義
+const movePlayerRecovery = function () {
+    // console.log('movePlayerRecovery')
     // 上下左右の移動速度を定義
     const SPEED = 6;
+
+    for (let i = 0; i < RECOVERY; i++) {
+        recovery_y[i] += SPEED;
+
+        if (recovery_y[i] > canvas.height) {
+            recovery_y[i] = -img_drug.height;
+            recovery_x[i] = Math.random() * (canvas.width - img_drug.width);
+        }
+    }
+};
+
+// 敵キャラの移動処理を定義
+const moveEnemies = function() {
 
     // 各敵ごとに処理を行う
     for (let i = 0; i < ENEMIES; i++) {
         // 敵キャラのy座標を少し増やす
-        enemies_y[i] += SPEED;
+        enemies_y[i] += enemies_speed[i];
 
         // 敵キャラが下画面にはみ出た場合は上に戻す
         if (enemies_y[i] > canvas.height) {
@@ -397,4 +505,13 @@ const hitCheck = function(x1, y1, obj1, x2, y2, obj2) {
         // 当たっていない
         return false;
     }
+};
+
+//改行させるためのファンクション
+function fillTextLine (context, text, x, y) {
+    var textList = text.split('\n');//\nで分割して配列にします。
+    var lineHeight = context.measureText("あ").width;// あ　はフォントのサイズを取得するのに利用しているだけです。
+    textList.forEach(function(text, i) {//配列を順番に読み出して、y（高さ）を計算しながら描画していきます。
+        context.fillText(text, x, y+lineHeight*i);
+    });
 };
