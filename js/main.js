@@ -12,8 +12,6 @@ window.onkeydown = function (e) {
     player.move(e.key)
 }
 
-
-
 class Player {
     constructor() {
         this.IMAGE = document.getElementById('player')
