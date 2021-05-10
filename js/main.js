@@ -3,10 +3,28 @@
 const canvas = document.getElementById('screen')
 const ctx = canvas.getContext('2d')
 
+const MAX_WIDTH = 600
+const MAX_HEIGHT = 600
+
+const SPACE = 32
+const ENTER = 13
+
+const ENMIES_COUNTS = 5
+const BULLET_COUNTS = 5
+
+// プレイヤーの無敵インターバル
+// （この値が大きいほど無敵時間が長くなる）
+const STAR_INTERVAL = 50
+let player_star_interval = 0
+// 発射インターバルの値を定義（この値が大きいほど連射が遅くなる）
+const FIRE_INTERVAL = 10;
+// 画面上に描画できる弾丸数
+const BULLETS = 5
+// プレイヤーの発射インターバル
+let player_fire_interval = 0
+
 // キーが押された時に呼び出される処理を指定
 window.onkeydown = function (e) {
-    const SPACE = 32
-    const ENTER = 13
     if (e.keyCode === SPACE) { player.shot() }
     if (e.keyCode === ENTER) { drug.drop() }
     player.move(e.key)
@@ -17,10 +35,9 @@ class Player {
         this.IMAGE = document.getElementById('player')
         this.IMAGE2 = document.getElementById('player2')
         this.x = 0
-        this.y = 450
+        this.y = 220
         this.hp = 10
-        this.BULLETS = 5
-        this.bullets_hp = new Array(this.BULLETS);
+        this.bullets_hp = new Array(BULLETS)
         this.SPEED = 8
         this.count = 0
     }
@@ -43,12 +60,22 @@ class Player {
             } else if (key === "ArrowLeft") {
                 this.x -= this.SPEED
             }
+            else if (key === "ArrowUp") {
+                this.y -= this.SPEED
+            }
+            else if (key === "ArrowDown") {
+                this.y += this.SPEED
+            }
 
             // プレイヤーがはみ出てしまった場合は強制的に中に戻す
             if (this.x < 0) {
                 this.x = 0
             } else if (this.x + 128 > canvas.width) {
                 this.x = canvas.width - 128
+            } else if (this.y < 0) {
+                this.y = 0
+            } else if (this.y + 128 > canvas.height) {
+                this.y = canvas.height - 128
             }
         }
     }
@@ -59,11 +86,11 @@ class Player {
             for (let i = 0; i < BULLET_COUNTS; i++) {
                 if(bullets[i].hp == 0) {
                     // 弾の初期位置はプレイヤーと同じ位置にする
-                    bullets[i].x = player.x + 60
-                    bullets[i].y = 425
+                    bullets[i].x = 100
+                    bullets[i].y = player.y + 60
                     // 弾のHPを2にする。これにより次のループから描画や移動処理
                     // が行われるようになる
-                    bullets[i].hp = 2;
+                    bullets[i].hp = 2
                     player_fire_interval = FIRE_INTERVAL
                     break;
                 }
@@ -90,8 +117,8 @@ class Bullet {
     }
 
     move() {
-        this.y -= this.speed
-        if (this.y < 0) {
+        this.x += this.speed
+        if (this.x > MAX_WIDTH) {
             this.hp = 0
         }
     }
@@ -100,10 +127,8 @@ class Bullet {
 
 class Drug {
     constructor() {
-        this.IMAGE = document.getElementById('drug');
-        this.MAX_WIDTH = 600
-        this.MAX_HEIGHT = 600
-        this.x = Math.floor( Math.random() * (this.MAX_WIDTH + 1 - 0) ) + 0
+        this.IMAGE = document.getElementById('drug')
+        this.x = Math.floor( Math.random() * (MAX_WIDTH + 1 - 0) ) + 0
         this.y = -this.IMAGE.height / 2
         this.speed = 8
         this.hp = 0
@@ -119,10 +144,10 @@ class Drug {
     }
 
     move() {
-        this.y += this.speed
-        if (this.y > this.MAX_HEIGHT) {
-            this.y = -this.IMAGE.height
-            this.x = Math.floor( Math.random() * (this.MAX_WIDTH + 1 - 0) ) + 0
+        this.x -= this.speed
+        if (this.x < -this.IMAGE.width) {
+            this.x = MAX_WIDTH + this.IMAGE.height
+            this.y = Math.floor( Math.random() * (MAX_HEIGHT + 1 - 0) ) + 0
         }
     }
 
@@ -137,10 +162,8 @@ class Drug {
 
 class Enemie {
     constructor() {
-        this.IMAGE = document.getElementById('enemy');
-        this.MAX_WIDTH = 600
-        this.MAX_HEIGHT = 600
-        this.x = Math.floor( Math.random() * (this.MAX_WIDTH + 1 - 0) ) + 0
+        this.IMAGE = document.getElementById('enemy')
+        this.x = MAX_WIDTH
         this.y = -this.IMAGE.height / 2
         this.speed = Math.floor( Math.random() * (10 + 1 - 3) ) + 3
         this.hp = 2
@@ -155,35 +178,13 @@ class Enemie {
     }
 
     move() {
-        this.y += this.speed
-        if (this.y > this.MAX_HEIGHT) {
-            this.y = -this.IMAGE.height
-            this.x = Math.floor( Math.random() * (this.MAX_WIDTH + 1 - 0) ) + 0
+        this.x -= this.speed
+        if (this.x < -this.IMAGE.width) {
+            this.y = Math.floor( Math.random() * (MAX_WIDTH + 1 - 0) ) + 0
+            this.x = MAX_WIDTH
         }
     }
 
-}
-
-const ENMIES_COUNTS = 5
-const BULLET_COUNTS = 5
-const player = new Player()
-const drug = new Drug()
-// プレイヤーの無敵インターバル
-// （この値が大きいほど無敵時間が長くなる）
-const STAR_INTERVAL = 50
-let player_star_interval = 0
-// 発射インターバルの値を定義（この値が大きいほど連射が遅くなる）
-const FIRE_INTERVAL = 10;
-// プレイヤーの発射インターバル
-let player_fire_interval = 0;
-const bullets = new Array(BULLET_COUNTS)
-for (let i = 0; i < BULLET_COUNTS; i++) {
-    bullets[i] = new Bullet()
-}
-let killed = 0
-const enemies = new Array(ENMIES_COUNTS)
-for (let i = 0; i < ENMIES_COUNTS; i++) {
-    enemies[i] = new Enemie()
 }
 
 function mainloop() {
@@ -223,21 +224,6 @@ function mainloop() {
         }
     }
 
-    // プレイヤーの無敵インターバルを減少させる
-    if(player_star_interval > 0) {
-        player_star_interval--
-    }
-    // 発射インターバルの値が0より大きい場合は値を減らす。
-    if(player_fire_interval > 0) {
-        player_fire_interval--
-    }
-
-    // プレイヤーと回復アイテムの当たり判定（プレイヤーが生きている場合）
-    if (player.hp > 0 && drug.hp > 0 && hitCheck(player.x, player.y, player.IMAGE2, drug.x, drug.y, drug.IMAGE)) {
-        player.hp = 10
-        drug.hp = 0
-    }
-
     // プレイヤー弾と敵キャラの当たり判定
     for(let i=0; i<ENMIES_COUNTS; i++) {
         // 敵が死んでいる場合はスルーする
@@ -261,6 +247,21 @@ function mainloop() {
         }
     }
 
+    // プレイヤーの無敵インターバルを減少させる
+    if(player_star_interval > 0) {
+        player_star_interval--
+    }
+    // 発射インターバルを減少させる
+    if(player_fire_interval > 0) {
+        player_fire_interval--
+    }
+
+    // プレイヤーと回復アイテムの当たり判定（プレイヤーが生きている場合）
+    if (player.hp > 0 && drug.hp > 0 && hitCheck(player.x, player.y, player.IMAGE2, drug.x, drug.y, drug.IMAGE)) {
+        player.hp = 10
+        drug.hp = 0
+    }
+
     // コンテキストの状態を保存（fillStyleを変えたりするので）
     ctx.save();
     // HPの最大値（10）x 5 の短形を描画（白）
@@ -280,32 +281,19 @@ function mainloop() {
                 canvas.height - 10);
 }
 
+const player = new Player()
+const drug = new Drug()
+const bullets = new Array(BULLET_COUNTS)
+for (let i = 0; i < BULLET_COUNTS; i++) {
+    bullets[i] = new Bullet()
+}
+let killed = 0
+const enemies = new Array(ENMIES_COUNTS)
+for (let i = 0; i < ENMIES_COUNTS; i++) {
+    enemies[i] = new Enemie()
+}
+
 mainloop()
-
-// function titleloop() {
-//     requestAnimationFrame(titleloop)
-//     ctx.clearRect(0, 0, 600, 600)
-
-//     // Hit SPACE to Start と表示
-//     ctx.save();
-//     ctx.font = '20px sans-serif';
-//     ctx.textBaseline = 'middle';    // 上下位置のベースラインを中心に
-//     ctx.fillStyle = '#fff';
-//     const text = "ふくろうの冒険\nスペースキーで開始";
-//     const width = ctx.measureText(text).width;
-//     fillTextLine(ctx, text, (canvas.width - width / 2) / 2, canvas.height / 2);
-//     ctx.restore();
-
-//     // スペースが押されていた場合は mainloop を呼び出して、titleloopを終了
-//     const SPACE = 32;
-//     if(KEYS[SPACE]) {
-//         // メインループを呼び出す
-//         mainloop();
-//         // 継続処理をせずに関数を終了（titleloopを抜ける）
-//         return;
-//     }
-
-// }
 
 // 当たり判定
 function hitCheck (x1, y1, obj1, x2, y2, obj2) {
@@ -331,13 +319,4 @@ function hitCheck (x1, y1, obj1, x2, y2, obj2) {
         // 当たっていない
         return false
     }
-}
-
-//改行させるためのファンクション
-function fillTextLine (context, text, x, y) {
-    var textList = text.split('\n')//\nで分割して配列にします。
-    var lineHeight = context.measureText("あ").width// あ　はフォントのサイズを取得するのに利用しているだけです。
-    textList.forEach(function(text, i) {//配列を順番に読み出して、y（高さ）を計算しながら描画していきます。
-        context.fillText(text, x, y+lineHeight*i)
-    })
 }
