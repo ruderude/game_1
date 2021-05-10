@@ -86,7 +86,7 @@ class Player {
             for (let i = 0; i < BULLET_COUNTS; i++) {
                 if(bullets[i].hp == 0) {
                     // 弾の初期位置はプレイヤーと同じ位置にする
-                    bullets[i].x = 100
+                    bullets[i].x = player.x + 100
                     bullets[i].y = player.y + 60
                     // 弾のHPを2にする。これにより次のループから描画や移動処理
                     // が行われるようになる
@@ -128,8 +128,8 @@ class Bullet {
 class Drug {
     constructor() {
         this.IMAGE = document.getElementById('drug')
-        this.x = Math.floor( Math.random() * (MAX_WIDTH + 1 - 0) ) + 0
-        this.y = -this.IMAGE.height / 2
+        this.x = MAX_WIDTH
+        this.y = 0
         this.speed = 8
         this.hp = 0
         this.count = 1
@@ -153,6 +153,8 @@ class Drug {
 
     drop() {
         if (this.count > 0) {
+            this.x = MAX_WIDTH + this.IMAGE.height
+            this.y = Math.floor( Math.random() * (MAX_HEIGHT + 1 - 0) ) + 0
             this.hp = 2
             this.count = 0
         }
@@ -164,7 +166,7 @@ class Enemie {
     constructor() {
         this.IMAGE = document.getElementById('enemy')
         this.x = MAX_WIDTH
-        this.y = -this.IMAGE.height / 2
+        this.y = Math.floor( Math.random() * (MAX_WIDTH + 1 - 0) ) + 0
         this.speed = Math.floor( Math.random() * (10 + 1 - 3) ) + 3
         this.hp = 2
     }
